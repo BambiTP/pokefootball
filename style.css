@@ -42,8 +42,8 @@ body {
 }
 
 .title-input {
-  flex: 0 1 240px;
-  min-width: 140px;
+  flex: 0 1 180px;
+  min-width: 110px;
 }
 
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
@@ -216,6 +216,26 @@ button.primary:hover { filter: brightness(1.08); }
 }
 
 .slot.filled:hover .x { display: block; }
+
+.signature {
+  position: absolute;
+  left: 4%;
+  bottom: 4%;
+  max-width: 42%;
+  font-family: Caveat, cursive;
+  font-weight: 700;
+  font-size: 4.6cqw;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 .4cqw #000, 0 0 .4cqw #000;
+  white-space: nowrap;
+  padding-right: 1cqw;
+  pointer-events: none;
+  transform: rotate(-4deg);
+  transform-origin: left bottom;
+}
+
+.signature:empty { display: none; }
 
 .toast {
   position: fixed;

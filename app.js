@@ -41,7 +41,7 @@ const spriteScale = () => hd ? 9.5 : 14; // drawn size on the field, % of field 
 const dexNo = n => '#' + String(n).padStart(3, '0');
 
 // ---------- state ----------
-let lineup = { title: '', slots: {} }; // slots: slotId -> dex number
+let lineup = { title: '', signer: '', slots: {} }; // slots: slotId -> dex number
 let selected = null;                    // { from: 'list', mon } or { from: 'slot', slot }
 
 const $ = id => document.getElementById(id);
@@ -168,6 +168,10 @@ function buildField() {
   bctx.scale(2, 2);
   drawFieldBg(bctx);
   field.appendChild(bg);
+  const sig = document.createElement('div');
+  sig.className = 'signature';
+  sig.id = 'signature';
+  field.appendChild(sig);
 
   for (const s of SLOTS) {
     const el = document.createElement('div');
@@ -226,6 +230,10 @@ function renderSlots() {
   }
 }
 
+function renderSignature() {
+  $('signature').textContent = lineup.signer ? '– ' + lineup.signer : '';
+}
+
 function setSelected(sel) {
   selected = sel;
   $('field').classList.toggle('placing', !!sel);
@@ -257,9 +265,9 @@ function loadImg(src) {
   return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
 }
 
-function fitText(ctx, text, maxW, size, weight) {
+function fitText(ctx, text, maxW, size, weight, family = 'system-ui, sans-serif') {
   let s = size;
-  do { ctx.font = `${weight} ${s}px system-ui, sans-serif`; } while (ctx.measureText(text).width > maxW && --s > 8);
+  do { ctx.font = `${weight} ${s}px ${family}`; } while (ctx.measureText(text).width > maxW && --s > 8);
 }
 
 async function renderImage() {
@@ -325,6 +333,23 @@ async function renderImage() {
       ctx.fillText(name, cx, ny);
     }
   }
+  if (lineup.signer) {
+    const text = '– ' + lineup.signer;
+    await document.fonts.load('700 46px Caveat').catch(() => {});
+    ctx.save();
+    ctx.translate(4 * u, H * .96);
+    ctx.rotate(-4 * Math.PI / 180);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    fitText(ctx, text, 42 * u, 46, '700', 'Caveat, cursive');
+    ctx.lineWidth = 6;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#000';
+    ctx.strokeText(text, 0, 0);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+  }
   ctx.restore();
   return c;
 }
@@ -377,18 +402,20 @@ function escapeHtml(s) {
 }
 
 function setLineup(l) {
-  lineup = { title: l.title || '', slots: {} };
+  lineup = { title: l.title || '', signer: l.signer || '', slots: {} };
   for (const [k, v] of Object.entries(l.slots || {})) {
     if (SLOT_BY_ID[k] && v >= 1 && v <= 151) lineup.slots[k] = +v;
   }
   $('title').value = lineup.title;
+  $('signer').value = lineup.signer;
+  renderSignature();
   setSelected(null);
   persist();
 }
 
 function encodeShare() {
   const s = Object.entries(lineup.slots).map(([k, v]) => `${k}.${v}`).join('-');
-  return `#t=${encodeURIComponent(lineup.title)}&s=${s}`;
+  return `#t=${encodeURIComponent(lineup.title)}&by=${encodeURIComponent(lineup.signer)}&s=${s}`;
 }
 
 function decodeShare(hash) {
@@ -399,7 +426,7 @@ function decodeShare(hash) {
     const [k, v] = pair.split('.');
     if (k) slots[k] = +v;
   }
-  return { title: p.get('t') || '', slots };
+  return { title: p.get('t') || '', signer: p.get('by') || '', slots };
 }
 
 function toast(msg) {
@@ -412,6 +439,7 @@ function toast(msg) {
 
 function wireControls() {
   $('title').addEventListener('input', e => { lineup.title = e.target.value; persist(); });
+  $('signer').addEventListener('input', e => { lineup.signer = e.target.value; persist(); renderSignature(); });
 
   $('search').addEventListener('input', e => {
     const q = e.target.value.trim().toLowerCase().replace(/^#0*/, '');
@@ -446,7 +474,7 @@ function wireControls() {
 
   $('clearBtn').addEventListener('click', () => {
     if (Object.keys(lineup.slots).length && !confirm('Empty every position?')) return;
-    setLineup({ title: lineup.title, slots: {} });
+    setLineup({ title: lineup.title, signer: lineup.signer, slots: {} });
   });
 
   $('shareBtn').addEventListener('click', async () => {

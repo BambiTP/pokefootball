@@ -167,8 +167,10 @@ function buildField() {
   const field = $('field');
   const bg = document.createElement('canvas');
   bg.className = 'bg';
-  bg.width = W; bg.height = H;
-  drawFieldBg(bg.getContext('2d'));
+  bg.width = W * 2; bg.height = H * 2; // 2x so lines stay sharp at large sizes
+  const bctx = bg.getContext('2d');
+  bctx.scale(2, 2);
+  drawFieldBg(bctx);
   field.appendChild(bg);
 
   for (const s of SLOTS) {

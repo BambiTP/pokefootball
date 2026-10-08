@@ -121,7 +121,7 @@ button.primary:hover { filter: brightness(1.08); }
 /* 1000 x 1300 design units; everything inside scales off the field width */
 .field {
   position: relative;
-  width: min(100%, calc((100vh - 110px) * 1000 / 1300));
+  width: min(100%, 1150px);
   min-width: 300px;
   aspect-ratio: 1000 / 1300;
   container-type: inline-size;

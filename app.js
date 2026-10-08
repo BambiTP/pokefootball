@@ -312,7 +312,7 @@ async function renderImage() {
     ctx.setLineDash([]);
 
     if (mon) {
-      const sz = 10 * u;
+      const sz = 14 * u;
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(imgs[mon], cx - sz / 2, dcy - sz / 2, sz, sz);
       const name = POKEMON[mon - 1];

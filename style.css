@@ -105,7 +105,7 @@ button.primary:hover { filter: brightness(1.08); }
 .mon:hover { background: var(--panel-2); }
 .mon.selected { background: var(--accent); color: var(--accent-text); }
 .mon.used { opacity: .4; }
-.mon img { width: 48px; height: 48px; image-rendering: pixelated; pointer-events: none; }
+.mon img { width: 68px; height: 68px; image-rendering: pixelated; pointer-events: none; }
 .mon .num { color: var(--muted); font-size: 12px; width: 34px; }
 .mon.selected .num { color: inherit; }
 
@@ -143,6 +143,8 @@ button.primary:hover { filter: brightness(1.08); }
   user-select: none;
 }
 
+.slot .pos, .slot .name { position: relative; z-index: 1; }
+
 .slot .pos {
   font-size: 1.5cqw;
   font-weight: 700;
@@ -175,8 +177,10 @@ button.primary:hover { filter: brightness(1.08); }
 .field.placing .slot .disc { border-color: rgba(255, 203, 5, .85); }
 
 .slot .disc img {
-  width: 10cqw;
-  height: 10cqw;
+  position: absolute;
+  width: 14cqw;
+  height: 14cqw;
+  max-width: none;
   image-rendering: pixelated;
   pointer-events: none;
 }

@@ -1,23 +1,22 @@
-// Field is laid out in percent of a 1000 x 1300 design; the page and the exported image share these numbers.
-const W = 1000, H = 1300;
-const LOS = 47; // line of scrimmage, % from top
+// Field is laid out in percent of a 1000 x 900 design; the page and the exported image share these numbers.
+const W = 1000, H = 900;
+const LOS = 46.5; // line of scrimmage, % from top
 
 // side: D = defense, O = offense, S = special teams
 const SLOTS = [
-  { id: 'FS',  label: 'FS',  side: 'D', x: 36, y: 11 },
-  { id: 'SS',  label: 'SS',  side: 'D', x: 64, y: 11 },
-  { id: 'CB1', label: 'CB',  side: 'D', x: 8,  y: 20 },
-  { id: 'CB2', label: 'CB',  side: 'D', x: 92, y: 20 },
-  { id: 'WLB', label: 'WLB', side: 'D', x: 28, y: 28.5 },
-  { id: 'MLB', label: 'MLB', side: 'D', x: 50, y: 27 },
-  { id: 'SLB', label: 'SLB', side: 'D', x: 72, y: 28.5 },
-  { id: 'DE1', label: 'DE',  side: 'D', x: 20, y: 39 },
-  { id: 'DT1', label: 'DT',  side: 'D', x: 40, y: 39 },
-  { id: 'DT2', label: 'DT',  side: 'D', x: 60, y: 39 },
-  { id: 'DE2', label: 'DE',  side: 'D', x: 80, y: 39 },
+  { id: 'CB1', label: 'CB',  side: 'D', x: 7,  y: 9 },
+  { id: 'FS',  label: 'FS',  side: 'D', x: 36, y: 9 },
+  { id: 'SS',  label: 'SS',  side: 'D', x: 64, y: 9 },
+  { id: 'CB2', label: 'CB',  side: 'D', x: 93, y: 9 },
+  { id: 'WLB', label: 'WLB', side: 'D', x: 28, y: 23.5 },
+  { id: 'MLB', label: 'MLB', side: 'D', x: 50, y: 23.5 },
+  { id: 'SLB', label: 'SLB', side: 'D', x: 72, y: 23.5 },
+  { id: 'DE1', label: 'DE',  side: 'D', x: 20, y: 38 },
+  { id: 'DT1', label: 'DT',  side: 'D', x: 40, y: 38 },
+  { id: 'DT2', label: 'DT',  side: 'D', x: 60, y: 38 },
+  { id: 'DE2', label: 'DE',  side: 'D', x: 80, y: 38 },
 
   { id: 'WR1', label: 'WR',  side: 'O', x: 7,  y: 55 },
-  { id: 'WR2', label: 'WR',  side: 'O', x: 18, y: 61 },
   { id: 'LT',  label: 'LT',  side: 'O', x: 30, y: 55 },
   { id: 'LG',  label: 'LG',  side: 'O', x: 40, y: 55 },
   { id: 'C',   label: 'C',   side: 'O', x: 50, y: 55 },
@@ -25,16 +24,20 @@ const SLOTS = [
   { id: 'RT',  label: 'RT',  side: 'O', x: 70, y: 55 },
   { id: 'TE',  label: 'TE',  side: 'O', x: 81, y: 57 },
   { id: 'WR3', label: 'WR',  side: 'O', x: 93, y: 55 },
-  { id: 'QB',  label: 'QB',  side: 'O', x: 50, y: 67.5 },
-  { id: 'RB',  label: 'RB',  side: 'O', x: 50, y: 79 },
+  { id: 'WR2', label: 'WR',  side: 'O', x: 18, y: 69.5 },
+  { id: 'QB',  label: 'QB',  side: 'O', x: 50, y: 69.5 },
+  { id: 'RB',  label: 'RB',  side: 'O', x: 50, y: 84 },
 
-  { id: 'K',   label: 'K',   side: 'S', x: 36, y: 92.5 },
-  { id: 'P',   label: 'P',   side: 'S', x: 64, y: 92.5 },
+  { id: 'K',   label: 'K',   side: 'S', x: 80, y: 84 },
+  { id: 'P',   label: 'P',   side: 'S', x: 92, y: 84 },
 ];
 const SLOT_BY_ID = Object.fromEntries(SLOTS.map(s => [s.id, s]));
 const SIDE_COLOR = { D: '#d64545', O: '#3b74d6', S: '#c99a12' };
 
-const sprite = n => `sprites/${n}.png`;
+// HD = Pokémon HOME renders (256px), classic = Gen 5-style pixel sprites (96px, lots of padding)
+let hd = false;
+const sprite = n => `${hd ? 'sprites-hd' : 'sprites'}/${n}.png`;
+const spriteScale = () => hd ? 9.5 : 14; // drawn size on the field, % of field width
 const dexNo = n => '#' + String(n).padStart(3, '0');
 
 // ---------- state ----------
@@ -87,26 +90,26 @@ function drawFieldBg(ctx) {
     ctx.fillStyle = i % 2 ? '#2f8a3e' : '#349645';
     ctx.fillRect(0, i * 5 * v, W, 5 * v + 1);
   }
-  // defense band and special-teams end zone
-  ctx.fillStyle = 'rgba(160, 30, 30, .55)';
-  ctx.fillRect(0, 0, W, 4.5 * v);
-  ctx.fillStyle = 'rgba(120, 90, 0, .45)';
-  ctx.fillRect(0, 86 * v, W, 14 * v);
-
   ctx.strokeStyle = 'rgba(255,255,255,.55)';
   ctx.lineWidth = 3;
-  for (let y = 10; y <= 80; y += 10) {
-    if (y === LOS + 3) continue;
+  for (const y of [16, 31, 62, 77]) {
     ctx.beginPath(); ctx.moveTo(0, y * v); ctx.lineTo(W, y * v); ctx.stroke();
   }
-  ctx.beginPath(); ctx.moveTo(0, 86 * v); ctx.lineTo(W, 86 * v); ctx.stroke();
   // hash marks
   ctx.lineWidth = 2;
-  for (let y = 6; y < 86; y += 2) {
+  for (let y = 3; y < 98; y += 2.5) {
     for (const x of [34, 66]) {
       ctx.beginPath(); ctx.moveTo((x - .8) * u, y * v); ctx.lineTo((x + .8) * u, y * v); ctx.stroke();
     }
   }
+  // special teams box, bottom right around K and P
+  const bx = 72 * u, by = 75 * v;
+  ctx.fillStyle = 'rgba(120, 90, 0, .55)';
+  ctx.fillRect(bx, by, W - bx, H - by);
+  ctx.strokeStyle = 'rgba(255,255,255,.8)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(bx, by, W - bx, H - by);
+
   // line of scrimmage
   ctx.strokeStyle = '#ffd84a';
   ctx.lineWidth = 5;
@@ -116,18 +119,11 @@ function drawFieldBg(ctx) {
   ctx.lineWidth = 8;
   ctx.strokeRect(4, 4, W - 8, H - 8);
 
-  ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = '800 30px system-ui, sans-serif';
-  ctx.fillText('DEFENSE', W / 2, 2.4 * v);
-  ctx.font = '800 26px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,.75)';
-  ctx.fillText('SPECIAL TEAMS', W / 2, 87.9 * v);
-  ctx.font = '700 15px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,.85)';
-  ctx.fillText('▲ DEFENSE', W / 2, (LOS - 1.6) * v);
-  ctx.fillText('▼ OFFENSE', W / 2, (LOS + 1.6) * v);
+  ctx.fillStyle = '#fff';
+  ctx.font = '800 20px system-ui, sans-serif';
+  ctx.fillText('SPECIAL TEAMS', (bx + W) / 2, 96.5 * v);
 }
 
 // ---------- rendering ----------
@@ -290,11 +286,11 @@ async function renderImage() {
   for (const s of SLOTS) {
     const mon = lineup.slots[s.id];
     const cx = s.x * u, cy = s.y * H / 100;
-    const top = cy - 11.7 * u / 2;
+    const top = cy - 12.6 * u / 2;
 
     // position badge
-    ctx.font = `700 ${1.5 * u}px system-ui, sans-serif`;
-    const bw = ctx.measureText(s.label).width + 1.4 * u, bh = 2.4 * u;
+    ctx.font = `700 ${2.1 * u}px system-ui, sans-serif`;
+    const bw = ctx.measureText(s.label).width + 1.8 * u, bh = 3.2 * u;
     ctx.fillStyle = SIDE_COLOR[s.side];
     roundRect(ctx, cx - bw / 2, top, bw, bh, bh / 2);
     ctx.fill();
@@ -302,7 +298,7 @@ async function renderImage() {
     ctx.fillText(s.label, cx, top + bh / 2 + 1);
 
     // disc
-    const r = 3.75 * u, dcy = top + bh + r;
+    const r = 3.5 * u, dcy = top + bh + r;
     ctx.beginPath();
     ctx.arc(cx, dcy, r - 1.25, 0, Math.PI * 2);
     ctx.fillStyle = mon ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.18)';
@@ -314,15 +310,16 @@ async function renderImage() {
     ctx.setLineDash([]);
 
     if (mon) {
-      const sz = 14 * u;
-      ctx.imageSmoothingEnabled = false;
+      const sz = spriteScale() * u;
+      ctx.imageSmoothingEnabled = hd;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(imgs[mon], cx - sz / 2, dcy - sz / 2, sz, sz);
       const name = POKEMON[mon - 1];
-      fitText(ctx, name, 11 * u, 1.25 * u, 700);
-      ctx.lineWidth = 4;
+      fitText(ctx, name, 12 * u, 1.8 * u, 700);
+      ctx.lineWidth = 5;
       ctx.strokeStyle = '#000';
       ctx.lineJoin = 'round';
-      const ny = dcy + r + 0.9 * u;
+      const ny = dcy + r + 1.2 * u;
       ctx.strokeText(name, cx, ny);
       ctx.fillStyle = '#fff';
       ctx.fillText(name, cx, ny);
@@ -459,10 +456,22 @@ function wireControls() {
     catch { prompt('Copy this link:', url); }
   });
 
+  $('hdBtn').addEventListener('click', () => setHd(!hd));
+
   $('downloadBtn').addEventListener('click', downloadImage);
   $('copyBtn').addEventListener('click', copyImage);
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape') setSelected(null); });
+}
+
+function setHd(on) {
+  hd = on;
+  store.set('pf.hd', on);
+  document.body.classList.toggle('hd', on);
+  $('hdBtn').textContent = on ? 'HD: on' : 'HD: off';
+  $('hdBtn').setAttribute('aria-pressed', on);
+  for (const img of document.querySelectorAll('.mon img')) img.src = sprite(+img.closest('.mon').dataset.mon);
+  renderSlots();
 }
 
 // ---------- boot ----------
@@ -471,4 +480,5 @@ buildField();
 wireRosterDrop();
 wireControls();
 refreshLoadList();
+setHd(store.get('pf.hd', false));
 setLineup(decodeShare(location.hash) || store.get('pf.current', { title: '', slots: {} }));

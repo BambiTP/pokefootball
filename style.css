@@ -19,7 +19,7 @@ html, body { height: 100%; margin: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   display: flex;
   flex-direction: column;
 }
@@ -106,24 +106,26 @@ button.primary:hover { filter: brightness(1.08); }
 .mon.selected { background: var(--accent); color: var(--accent-text); }
 .mon.used { opacity: .4; }
 .mon img { width: 68px; height: 68px; image-rendering: pixelated; pointer-events: none; }
-.mon .num { color: var(--muted); font-size: 12px; width: 34px; }
+.mon .num { color: var(--muted); font-size: 13px; width: 38px; }
+.mon { font-size: 16px; }
+.hd .mon img { width: 52px; height: 52px; image-rendering: auto; }
 .mon.selected .num { color: inherit; }
 
 .field-wrap {
   min-height: 0;
-  overflow: auto;
-  padding: 16px;
+  overflow: hidden;
+  padding: 12px;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
+  container-type: size;
 }
 
-/* 1000 x 1300 design units; everything inside scales off the field width */
+/* 1000 x 900 design units, as big as fits the space both ways; everything inside scales off the field width */
 .field {
   position: relative;
-  width: min(100%, 1150px);
-  min-width: 300px;
-  aspect-ratio: 1000 / 1300;
+  width: min(100cqw, 100cqh * 1000 / 900);
+  aspect-ratio: 1000 / 900;
   container-type: inline-size;
   border-radius: 8px;
   overflow: hidden;
@@ -146,13 +148,13 @@ button.primary:hover { filter: brightness(1.08); }
 .slot .pos, .slot .name { position: relative; z-index: 1; }
 
 .slot .pos {
-  font-size: 1.5cqw;
+  font-size: 2.1cqw;
   font-weight: 700;
   color: #fff;
-  height: 2.4cqw;
-  line-height: 2.4cqw;
-  padding: 0 .7cqw;
-  border-radius: 1.2cqw;
+  height: 3.2cqw;
+  line-height: 3.2cqw;
+  padding: 0 .9cqw;
+  border-radius: 1.6cqw;
   background: var(--offense);
   white-space: nowrap;
 }
@@ -162,8 +164,8 @@ button.primary:hover { filter: brightness(1.08); }
 
 .slot .disc {
   position: relative;
-  width: 7.5cqw;
-  height: 7.5cqw;
+  width: 7cqw;
+  height: 7cqw;
   border-radius: 50%;
   border: .25cqw dashed rgba(255, 255, 255, .7);
   background: rgba(0, 0, 0, .18);
@@ -185,11 +187,13 @@ button.primary:hover { filter: brightness(1.08); }
   pointer-events: none;
 }
 
+.hd .slot .disc img { width: 9.5cqw; height: 9.5cqw; image-rendering: auto; }
+
 .slot .name {
-  font-size: 1.25cqw;
+  font-size: 1.8cqw;
   font-weight: 700;
-  height: 1.8cqw;
-  line-height: 1.8cqw;
+  height: 2.4cqw;
+  line-height: 2.4cqw;
   white-space: nowrap;
   color: #fff;
   text-shadow: 0 0 .3cqw #000, 0 0 .3cqw #000;
@@ -231,10 +235,9 @@ button.primary:hover { filter: brightness(1.08); }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media (max-width: 760px) {
-  .layout { grid-template-columns: 1fr; grid-template-rows: 34vh auto; }
+  .layout { grid-template-columns: 1fr; grid-template-rows: 34vh 1fr; }
   .roster { border-right: none; border-bottom: 1px solid var(--border); }
-  .field { width: 100%; min-width: 0; }
-  .field-wrap { padding: 12px 0; }
+  .field-wrap { padding: 8px; }
   .actions { margin-left: 0; }
   .slot.filled .x { display: block; }
 }

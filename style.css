@@ -100,6 +100,7 @@ button.primary:hover { filter: brightness(1.08); }
 .tog[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
 
 .types-box summary, .notes summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.notes[open] { display: flex; flex-direction: column; gap: 6px; }
 .types-box[open] summary { margin-bottom: 4px; }
 .type-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .type-chip { padding: 2px 7px; font-size: 12px; opacity: .45; color: #fff; border: none; background: var(--type); }

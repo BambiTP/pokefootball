@@ -169,8 +169,8 @@ function drawFieldBg(ctx, mixed) {
 
   if (mixed) {
     ctx.strokeStyle = '#2f7fff';
-    ctx.lineWidth = 24;
-    ctx.strokeRect(12, 12, W - 24, H - 24);
+    ctx.lineWidth = 12;
+    ctx.strokeRect(6, 6, W - 12, H - 12);
   } else {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 8;

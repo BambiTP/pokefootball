@@ -24,12 +24,12 @@ const SLOTS = [
   { id: 'RT',  label: 'RT',  side: 'O', x: 70, y: 55 },
   { id: 'TE',  label: 'TE',  side: 'O', x: 81, y: 57 },
   { id: 'WR3', label: 'WR',  side: 'O', x: 93, y: 55 },
-  { id: 'WR2', label: 'WR',  side: 'O', x: 18, y: 69.5 },
-  { id: 'QB',  label: 'QB',  side: 'O', x: 50, y: 69.5 },
-  { id: 'RB',  label: 'RB',  side: 'O', x: 50, y: 84 },
+  { id: 'WR2', label: 'WR',  side: 'O', x: 18, y: 70.5 },
+  { id: 'QB',  label: 'QB',  side: 'O', x: 50, y: 70.5 },
+  { id: 'RB',  label: 'RB',  side: 'O', x: 50, y: 85.5 },
 
-  { id: 'K',   label: 'K',   side: 'S', x: 80, y: 84 },
-  { id: 'P',   label: 'P',   side: 'S', x: 92, y: 84 },
+  { id: 'K',   label: 'K',   side: 'S', x: 80, y: 85 },
+  { id: 'P',   label: 'P',   side: 'S', x: 92, y: 85 },
 ];
 const SLOT_BY_ID = Object.fromEntries(SLOTS.map(s => [s.id, s]));
 const SIDE_COLOR = { D: '#d64545', O: '#3b74d6', S: '#c99a12' };
@@ -48,7 +48,14 @@ function heightText(dm) {
 const weightText = hg => `${(hg * 0.220462).toFixed(1)} lb`;
 
 // ---------- state ----------
-const NO_RULES = { allGens: false, firstEvo: false, noLegends: false, types: [] };
+const NO_RULES = { allGens: false, firstEvo: false, noLegends: false, noPseudo: false, popWarner: false, types: [] };
+const FLAG_RULES = ['allGens', 'firstEvo', 'noLegends', 'noPseudo', 'popWarner'];
+
+// Final forms of the 600-stat three-stage lines (Dragonite, Tyranitar, Salamence, Metagross, Garchomp,
+// Hydreigon, Goodra, Kommo-o, Dragapult, Baxcalibur); their pre-evolutions stay allowed.
+const PSEUDO = new Set([149, 248, 373, 376, 445, 635, 706, 784, 887, 998]);
+// Pop Warner: small Pokémon only, at most 1.0 m (3'03") and 45 kg (99 lb)
+const POP_WARNER = { dm: 10, hg: 450 };
 let lineup = { title: '', signer: '', rules: { ...NO_RULES }, slots: {} }; // slots: slotId -> dex number
 let selected = null;                    // { from: 'list', mon } or { from: 'slot', slot }
 
@@ -66,7 +73,7 @@ function duplicates() {
   return new Set(Object.keys(count).filter(m => count[m] > 1).map(Number));
 }
 
-// All gens on, or any Pokémon from outside Gen 1 placed, switches the turf color.
+// All gens on, or any Pokémon from outside Gen 1 placed, gives the field a blue border.
 const mixedGens = () => lineup.rules.allGens || Object.values(lineup.slots).some(m => m > 151);
 
 const TYPE_COLOR = {
@@ -80,6 +87,8 @@ function allowed(mon) {
   return (r.allGens || mon <= 151) &&
     (!r.firstEvo || FIRST_EVO[i] === '1') &&
     (!r.noLegends || LEGENDARY[i] === '0') &&
+    (!r.noPseudo || !PSEUDO.has(mon)) &&
+    (!r.popWarner || (SIZES[i][0] <= POP_WARNER.dm && SIZES[i][1] <= POP_WARNER.hg)) &&
     (!r.types.length || MON_TYPES[i].some(t => r.types.includes(t)));
 }
 
@@ -89,6 +98,8 @@ function ruleLabels() {
   if (r.allGens) out.push('All gens');
   if (r.firstEvo) out.push('1st evolution only');
   if (r.noLegends) out.push('No legendaries');
+  if (r.noPseudo) out.push('No pseudo-legendaries');
+  if (r.popWarner) out.push('Pop Warner');
   if (r.types.length) out.push('Types: ' + r.types.map(t => TYPES[t]).join(' / '));
   return out;
 }
@@ -115,17 +126,18 @@ function clearSlot(slotId) {
 function changed() {
   persist();
   drawPageField();
+  renderGenBadges();
   renderSlots();
   renderUsed();
 }
 
 // ---------- field background (shared by page and export) ----------
-const TURF = { gen1: ['#349645', '#2f8a3e'], mixed: ['#3479ab', '#2d6e9e'] };
+const TURF = ['#349645', '#2f8a3e'];
 
-function drawFieldBg(ctx, turf) {
+function drawFieldBg(ctx, mixed) {
   const u = W / 100, v = H / 100;
   for (let i = 0; i < 20; i++) {
-    ctx.fillStyle = turf[i % 2];
+    ctx.fillStyle = TURF[i % 2];
     ctx.fillRect(0, i * 5 * v, W, 5 * v + 1);
   }
   ctx.strokeStyle = 'rgba(255,255,255,.55)';
@@ -153,9 +165,15 @@ function drawFieldBg(ctx, turf) {
   ctx.lineWidth = 5;
   ctx.beginPath(); ctx.moveTo(0, LOS * v); ctx.lineTo(W, LOS * v); ctx.stroke();
 
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 8;
-  ctx.strokeRect(4, 4, W - 8, H - 8);
+  if (mixed) {
+    ctx.strokeStyle = '#2f7fff';
+    ctx.lineWidth = 24;
+    ctx.strokeRect(12, 12, W - 24, H - 24);
+  } else {
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+  }
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -203,12 +221,12 @@ function renderUsed() {
 
 function drawPageField() {
   const bg = $('fieldBg');
-  const turf = mixedGens() ? TURF.mixed : TURF.gen1;
-  if (bg.dataset.turf === turf[0]) return;
-  bg.dataset.turf = turf[0];
+  const mixed = mixedGens();
+  if (bg.dataset.mixed === String(mixed)) return;
+  bg.dataset.mixed = mixed;
   const bctx = bg.getContext('2d');
   bctx.setTransform(2, 0, 0, 2, 0, 0); // 2x so lines stay sharp at large sizes
-  drawFieldBg(bctx, turf);
+  drawFieldBg(bctx, mixed);
 }
 
 function buildField() {
@@ -218,10 +236,11 @@ function buildField() {
   bg.id = 'fieldBg';
   bg.width = W * 2; bg.height = H * 2;
   field.appendChild(bg);
-  const sig = document.createElement('div');
-  sig.className = 'signature';
-  sig.id = 'signature';
-  field.appendChild(sig);
+  // bottom-left corner: signature, toggle badges, gen badges
+  const corner = document.createElement('div');
+  corner.className = 'corner';
+  corner.innerHTML = '<div class="signature" id="signature"></div><div class="badges" id="ruleBadges"></div><div class="badges" id="genBadges"></div>';
+  field.appendChild(corner);
 
   for (const s of SLOTS) {
     const el = document.createElement('div');
@@ -282,6 +301,18 @@ function renderSlots() {
   }
 }
 
+const GEN_COLOR = ['#e3350d', '#c9a227', '#3d7dca', '#8a6bbe', '#4a4a4a', '#2b8fd6', '#e8822a', '#a8327e', '#7b2fbe'];
+const gensUsed = () => [...new Set(Object.values(lineup.slots).map(genOf))].sort((x, y) => x - y);
+
+function renderGenBadges() {
+  $('genBadges').innerHTML = gensUsed()
+    .map(g => `<span class="badge" style="background:${GEN_COLOR[g - 1]}">GEN ${g}</span>`).join('');
+}
+
+function renderRuleBadges() {
+  $('ruleBadges').innerHTML = ruleLabels().map(r => `<span class="badge rule-badge">${escapeHtml(r)}</span>`).join('');
+}
+
 function renderSignature() {
   $('signature').textContent = lineup.signer ? '– ' + lineup.signer : '';
 }
@@ -322,9 +353,32 @@ function fitText(ctx, text, maxW, size, weight, family = 'system-ui, sans-serif'
   do { ctx.font = `${weight} ${s}px ${family}`; } while (ctx.measureText(text).width > maxW && --s > 8);
 }
 
+// A left-aligned row of rounded badges; shrinks the text to fit maxW. Returns nothing.
+function drawBadgeRow(ctx, items, x, y, h, maxW) {
+  const u = W / 100, gap = .8 * u, pad = 1 * u;
+  let size = 1.8 * u, widths;
+  do {
+    size -= .5;
+    ctx.font = `800 ${size}px system-ui, sans-serif`;
+    widths = items.map(it => ctx.measureText(it.label).width + pad * 2);
+  } while (widths.reduce((s, w) => s + w, 0) + gap * (items.length - 1) > maxW && size > 9);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  items.forEach((it, i) => {
+    ctx.fillStyle = it.bg;
+    roundRect(ctx, x, y, widths[i], h, h / 2);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+    ctx.fillStyle = it.fg;
+    ctx.fillText(it.label, x + widths[i] / 2, y + h / 2 + 1);
+    x += widths[i] + gap;
+  });
+}
+
 async function renderImage() {
-  const labels = ruleLabels();
-  const header = labels.length ? HEADER + 50 : HEADER;
+  const header = HEADER;
   const c = document.createElement('canvas');
   c.width = W; c.height = H + header;
   const ctx = c.getContext('2d');
@@ -337,29 +391,9 @@ async function renderImage() {
   fitText(ctx, lineup.title || 'PokéFootball', W - 60, 48, 800);
   ctx.fillText(lineup.title || 'PokéFootball', W / 2, HEADER / 2);
 
-  // one pill per toggle that's on
-  if (labels.length) {
-    const pad = 16, gap = 10, ph = 34;
-    let size = 21, widths;
-    do {
-      ctx.font = `700 ${--size}px system-ui, sans-serif`;
-      widths = labels.map(t => ctx.measureText(t).width + pad * 2);
-    } while (widths.reduce((s, w) => s + w, 0) + gap * (labels.length - 1) > W - 40 && size > 10);
-    let x = (W - widths.reduce((s, w) => s + w, 0) - gap * (labels.length - 1)) / 2;
-    const y = HEADER - 8;
-    labels.forEach((t, i) => {
-      ctx.fillStyle = '#ffcb05';
-      roundRect(ctx, x, y, widths[i], ph, ph / 2);
-      ctx.fill();
-      ctx.fillStyle = '#1b1b1b';
-      ctx.fillText(t, x + widths[i] / 2, y + ph / 2 + 1);
-      x += widths[i] + gap;
-    });
-  }
-
   ctx.save();
   ctx.translate(0, header);
-  drawFieldBg(ctx, mixedGens() ? TURF.mixed : TURF.gen1);
+  drawFieldBg(ctx, mixedGens());
 
   const dupes = duplicates();
   const imgs = {};
@@ -407,13 +441,38 @@ async function renderImage() {
       ctx.strokeText(name, cx, ny);
       ctx.fillStyle = '#fff';
       ctx.fillText(name, cx, ny);
+
+      const [ht, wt] = SIZES[mon - 1];
+      const hw = `${heightText(ht)} · ${weightText(wt)}`;
+      const hy = ny + 1.6 * u;
+      fitText(ctx, hw, 9.6 * u, 1.45 * u, 600);
+      ctx.lineWidth = 4;
+      ctx.strokeText(hw, cx, hy);
+      ctx.fillStyle = '#e8f0ff';
+      ctx.fillText(hw, cx, hy);
     }
   }
+  // bottom-left corner, bottom up: gens used, then toggles that are on, then the signature
+  const bh = 3 * u, bgap = .8 * u, maxW = 44 * u;
+  let by = H * .97;
+  const gens = gensUsed();
+  if (gens.length) {
+    by -= bh;
+    drawBadgeRow(ctx, gens.map(g => ({ label: `GEN ${g}`, bg: GEN_COLOR[g - 1], fg: '#fff' })), 4 * u, by, bh, maxW);
+    by -= bgap;
+  }
+  const rules = ruleLabels();
+  if (rules.length) {
+    by -= bh;
+    drawBadgeRow(ctx, rules.map(r => ({ label: r.toUpperCase(), bg: '#ffcb05', fg: '#1b1b1b' })), 4 * u, by, bh, maxW);
+    by -= bgap;
+  }
+
   if (lineup.signer) {
     const text = '– ' + lineup.signer;
     await document.fonts.load('700 46px Caveat').catch(() => {});
     ctx.save();
-    ctx.translate(4 * u, H * .96);
+    ctx.translate(4 * u, by);
     ctx.rotate(-4 * Math.PI / 180);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
@@ -481,8 +540,10 @@ function setLineup(l) {
   const r = l.rules || {};
   lineup = {
     title: l.title || '', signer: l.signer || '',
-    rules: { allGens: !!r.allGens, firstEvo: !!r.firstEvo, noLegends: !!r.noLegends,
-             types: (r.types || []).filter(t => TYPES[t]).map(Number) },
+    rules: {
+      ...Object.fromEntries(FLAG_RULES.map(k => [k, !!r[k]])),
+      types: (r.types || []).filter(t => TYPES[t]).map(Number),
+    },
     slots: {},
   };
   for (const [k, v] of Object.entries(l.slots || {})) {
@@ -491,6 +552,7 @@ function setLineup(l) {
   $('title').value = lineup.title;
   $('signer').value = lineup.signer;
   renderSignature();
+  renderGenBadges();
   renderRules();
   setSelected(null);
   persist();
@@ -499,7 +561,7 @@ function setLineup(l) {
 function encodeShare() {
   const s = Object.entries(lineup.slots).map(([k, v]) => `${k}.${v}`).join('-');
   const r = lineup.rules;
-  const flags = ['allGens', 'firstEvo', 'noLegends'].filter(k => r[k]).join('.');
+  const flags = FLAG_RULES.filter(k => r[k]).join('.');
   return `#t=${encodeURIComponent(lineup.title)}&by=${encodeURIComponent(lineup.signer)}` +
     `&r=${flags}&ty=${r.types.join('.')}&s=${s}`;
 }
@@ -513,7 +575,7 @@ function decodeShare(hash) {
     if (k) slots[k] = +v;
   }
   const flags = (p.get('r') || '').split('.');
-  const rules = { allGens: flags.includes('allGens'), firstEvo: flags.includes('firstEvo'), noLegends: flags.includes('noLegends'),
+  const rules = { ...Object.fromEntries(FLAG_RULES.map(k => [k, flags.includes(k)])),
                   types: (p.get('ty') || '').split('.').filter(Boolean).map(Number) };
   return { title: p.get('t') || '', signer: p.get('by') || '', rules, slots };
 }
@@ -597,6 +659,7 @@ function renderRules() {
   for (const b of document.querySelectorAll('.type-chip')) b.setAttribute('aria-pressed', r.types.includes(+b.dataset.type));
   $('typeSummary').textContent = r.types.length ? r.types.map(t => TYPES[t]).join(', ') : 'any';
   $('genSel').hidden = !r.allGens;
+  renderRuleBadges();
   filterList();
   drawPageField();
 }

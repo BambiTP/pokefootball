@@ -248,11 +248,19 @@ button.primary:hover { filter: brightness(1.08); }
 
 .slot.filled:hover .x { display: block; }
 
-.signature {
+.corner {
   position: absolute;
   left: 4%;
-  bottom: 4%;
-  max-width: 42%;
+  bottom: 3%;
+  max-width: 44%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .8cqw;
+  pointer-events: none;
+}
+
+.signature {
   font-family: Caveat, cursive;
   font-weight: 700;
   font-size: 4.6cqw;
@@ -261,12 +269,27 @@ button.primary:hover { filter: brightness(1.08); }
   text-shadow: 0 0 .4cqw #000, 0 0 .4cqw #000;
   white-space: nowrap;
   padding-right: 1cqw;
-  pointer-events: none;
   transform: rotate(-4deg);
   transform-origin: left bottom;
 }
 
-.signature:empty { display: none; }
+.signature:empty, .badges:empty { display: none; }
+
+.badges { display: flex; flex-wrap: wrap; gap: .8cqw; }
+
+.badge {
+  font-size: 1.6cqw;
+  font-weight: 800;
+  color: #fff;
+  height: 3cqw;
+  line-height: calc(3cqw - 4px);
+  padding: 0 1cqw;
+  border-radius: 1.5cqw;
+  border: 2px solid #fff;
+  white-space: nowrap;
+}
+
+.rule-badge { background: var(--accent); color: var(--accent-text); text-transform: uppercase; }
 
 .toast {
   position: fixed;

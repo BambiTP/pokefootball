@@ -34,14 +34,22 @@ const SLOTS = [
 const SLOT_BY_ID = Object.fromEntries(SLOTS.map(s => [s.id, s]));
 const SIDE_COLOR = { D: '#d64545', O: '#3b74d6', S: '#c99a12' };
 
-// HD = Pokémon HOME renders (256px), classic = Gen 5-style pixel sprites (96px, lots of padding)
+// HD = official artwork (256px WebP), classic = pixel sprites (96px, lots of padding)
 let hd = false;
-const sprite = n => `${hd ? 'sprites-hd' : 'sprites'}/${n}.png`;
-const spriteScale = () => hd ? 9.5 : 14; // drawn size on the field, % of field width
+const sprite = n => hd ? `sprites-hd/${n}.webp` : `sprites/${n}.png`;
+const spriteScale = () => hd ? 9 : 14; // drawn size on the field, % of field width
 const dexNo = n => '#' + String(n).padStart(3, '0');
 
+// PokeAPI stores height in decimeters and weight in hectograms
+function heightText(dm) {
+  const inches = Math.round(dm * 3.937);
+  return `${Math.floor(inches / 12)}'${String(inches % 12).padStart(2, '0')}"`;
+}
+const weightText = hg => `${(hg * 0.220462).toFixed(1)} lb`;
+
 // ---------- state ----------
-let lineup = { title: '', signer: '', slots: {} }; // slots: slotId -> dex number
+const NO_RULES = { allGens: false, firstEvo: false, noLegends: false, types: [] };
+let lineup = { title: '', signer: '', rules: { ...NO_RULES }, slots: {} }; // slots: slotId -> dex number
 let selected = null;                    // { from: 'list', mon } or { from: 'slot', slot }
 
 const $ = id => document.getElementById(id);
@@ -52,14 +60,41 @@ const store = {
 
 function persist() { store.set('pf.current', lineup); }
 
-function slotOf(mon) {
-  return Object.keys(lineup.slots).find(k => lineup.slots[k] === mon);
+function duplicates() {
+  const count = {};
+  for (const m of Object.values(lineup.slots)) count[m] = (count[m] || 0) + 1;
+  return new Set(Object.keys(count).filter(m => count[m] > 1).map(Number));
 }
 
-// Each Pokémon plays one position: putting it somewhere moves it from wherever it was.
+// All gens on, or any Pokémon from outside Gen 1 placed, switches the turf color.
+const mixedGens = () => lineup.rules.allGens || Object.values(lineup.slots).some(m => m > 151);
+
+const TYPE_COLOR = {
+  Normal: '#9a9a6c', Fighting: '#b8302a', Flying: '#8f7ad8', Poison: '#93409a', Ground: '#cfae5a', Rock: '#a8922e',
+  Bug: '#8f9e1c', Ghost: '#6a5490', Steel: '#9a9ab8', Fire: '#e8742a', Water: '#5a84e0', Grass: '#5fae3e',
+  Electric: '#e0b81c', Psychic: '#e8487a', Ice: '#78c8c8', Dragon: '#6a3ae8', Dark: '#6a5446', Fairy: '#d685ad',
+};
+
+function allowed(mon) {
+  const r = lineup.rules, i = mon - 1;
+  return (r.allGens || mon <= 151) &&
+    (!r.firstEvo || FIRST_EVO[i] === '1') &&
+    (!r.noLegends || LEGENDARY[i] === '0') &&
+    (!r.types.length || MON_TYPES[i].some(t => r.types.includes(t)));
+}
+
+// Labels for the toggles that are on, shown on the exported image
+function ruleLabels() {
+  const r = lineup.rules, out = [];
+  if (r.allGens) out.push('All gens');
+  if (r.firstEvo) out.push('1st evolution only');
+  if (r.noLegends) out.push('No legendaries');
+  if (r.types.length) out.push('Types: ' + r.types.map(t => TYPES[t]).join(' / '));
+  return out;
+}
+
+// The same Pokémon can play more than one position; duplicates get a red circle.
 function place(mon, slotId) {
-  const prev = slotOf(mon);
-  if (prev) delete lineup.slots[prev];
   lineup.slots[slotId] = mon;
   changed();
 }
@@ -79,15 +114,18 @@ function clearSlot(slotId) {
 
 function changed() {
   persist();
+  drawPageField();
   renderSlots();
   renderUsed();
 }
 
 // ---------- field background (shared by page and export) ----------
-function drawFieldBg(ctx) {
+const TURF = { gen1: ['#349645', '#2f8a3e'], mixed: ['#3479ab', '#2d6e9e'] };
+
+function drawFieldBg(ctx, turf) {
   const u = W / 100, v = H / 100;
   for (let i = 0; i < 20; i++) {
-    ctx.fillStyle = i % 2 ? '#2f8a3e' : '#349645';
+    ctx.fillStyle = turf[i % 2];
     ctx.fillRect(0, i * 5 * v, W, 5 * v + 1);
   }
   ctx.strokeStyle = 'rgba(255,255,255,.55)';
@@ -132,12 +170,16 @@ function renderList() {
   list.innerHTML = '';
   POKEMON.forEach((name, i) => {
     const mon = i + 1;
+    const [ht, wt] = SIZES[i];
     const li = document.createElement('li');
     li.className = 'mon';
     li.draggable = true;
     li.dataset.mon = mon;
+    li.dataset.gen = genOf(mon);
     li.dataset.search = (name + ' ' + mon + ' ' + dexNo(mon)).toLowerCase();
-    li.innerHTML = `<img src="${sprite(mon)}" alt="" loading="lazy"><span class="num">${dexNo(mon)}</span><span>${name}</span>`;
+    li.innerHTML = `<img src="${sprite(mon)}" alt="" loading="lazy"><span class="num">${dexNo(mon)}</span>` +
+      `<span class="info"><span>${name}</span><span class="hw">${heightText(ht)} · ${weightText(wt)}</span>` +
+      `<span class="types">${MON_TYPES[i].map(t => `<span class="type" style="--type:${TYPE_COLOR[TYPES[t]]}">${TYPES[t]}</span>`).join('')}</span></span>`;
     li.addEventListener('dragstart', e => {
       e.dataTransfer.setData('text/plain', JSON.stringify({ from: 'list', mon }));
       e.dataTransfer.effectAllowed = 'move';
@@ -159,14 +201,22 @@ function renderUsed() {
   }
 }
 
+function drawPageField() {
+  const bg = $('fieldBg');
+  const turf = mixedGens() ? TURF.mixed : TURF.gen1;
+  if (bg.dataset.turf === turf[0]) return;
+  bg.dataset.turf = turf[0];
+  const bctx = bg.getContext('2d');
+  bctx.setTransform(2, 0, 0, 2, 0, 0); // 2x so lines stay sharp at large sizes
+  drawFieldBg(bctx, turf);
+}
+
 function buildField() {
   const field = $('field');
   const bg = document.createElement('canvas');
   bg.className = 'bg';
-  bg.width = W * 2; bg.height = H * 2; // 2x so lines stay sharp at large sizes
-  const bctx = bg.getContext('2d');
-  bctx.scale(2, 2);
-  drawFieldBg(bctx);
+  bg.id = 'fieldBg';
+  bg.width = W * 2; bg.height = H * 2;
   field.appendChild(bg);
   const sig = document.createElement('div');
   sig.className = 'signature';
@@ -211,6 +261,7 @@ function buildField() {
 }
 
 function renderSlots() {
+  const dupes = duplicates();
   for (const el of document.querySelectorAll('.slot')) {
     const id = el.dataset.slot;
     const mon = lineup.slots[id];
@@ -218,6 +269,7 @@ function renderSlots() {
     const old = disc.querySelector('img');
     if (old) old.remove();
     el.classList.toggle('filled', !!mon);
+    el.classList.toggle('dupe', dupes.has(mon));
     el.classList.toggle('selected', !!selected && selected.from === 'slot' && selected.slot === id);
     el.draggable = !!mon;
     el.querySelector('.name').textContent = mon ? POKEMON[mon - 1] : '';
@@ -271,8 +323,10 @@ function fitText(ctx, text, maxW, size, weight, family = 'system-ui, sans-serif'
 }
 
 async function renderImage() {
+  const labels = ruleLabels();
+  const header = labels.length ? HEADER + 50 : HEADER;
   const c = document.createElement('canvas');
-  c.width = W; c.height = H + HEADER;
+  c.width = W; c.height = H + header;
   const ctx = c.getContext('2d');
 
   ctx.fillStyle = '#14181f';
@@ -283,10 +337,31 @@ async function renderImage() {
   fitText(ctx, lineup.title || 'PokéFootball', W - 60, 48, 800);
   ctx.fillText(lineup.title || 'PokéFootball', W / 2, HEADER / 2);
 
-  ctx.save();
-  ctx.translate(0, HEADER);
-  drawFieldBg(ctx);
+  // one pill per toggle that's on
+  if (labels.length) {
+    const pad = 16, gap = 10, ph = 34;
+    let size = 21, widths;
+    do {
+      ctx.font = `700 ${--size}px system-ui, sans-serif`;
+      widths = labels.map(t => ctx.measureText(t).width + pad * 2);
+    } while (widths.reduce((s, w) => s + w, 0) + gap * (labels.length - 1) > W - 40 && size > 10);
+    let x = (W - widths.reduce((s, w) => s + w, 0) - gap * (labels.length - 1)) / 2;
+    const y = HEADER - 8;
+    labels.forEach((t, i) => {
+      ctx.fillStyle = '#ffcb05';
+      roundRect(ctx, x, y, widths[i], ph, ph / 2);
+      ctx.fill();
+      ctx.fillStyle = '#1b1b1b';
+      ctx.fillText(t, x + widths[i] / 2, y + ph / 2 + 1);
+      x += widths[i] + gap;
+    });
+  }
 
+  ctx.save();
+  ctx.translate(0, header);
+  drawFieldBg(ctx, mixedGens() ? TURF.mixed : TURF.gen1);
+
+  const dupes = duplicates();
   const imgs = {};
   await Promise.all(Object.values(lineup.slots).map(async m => { imgs[m] = await loadImg(sprite(m)); }));
 
@@ -309,10 +384,11 @@ async function renderImage() {
     const r = 3.5 * u, dcy = top + bh + r;
     ctx.beginPath();
     ctx.arc(cx, dcy, r - 1.25, 0, Math.PI * 2);
-    ctx.fillStyle = mon ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.18)';
+    const dupe = dupes.has(mon);
+    ctx.fillStyle = dupe ? 'rgba(230,40,40,.55)' : mon ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.18)';
     ctx.fill();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = 'rgba(255,255,255,.7)';
+    ctx.lineWidth = dupe ? 4 : 2.5;
+    ctx.strokeStyle = dupe ? '#ff3b3b' : 'rgba(255,255,255,.7)';
     ctx.setLineDash(mon ? [] : [6, 5]);
     ctx.stroke();
     ctx.setLineDash([]);
@@ -402,20 +478,30 @@ function escapeHtml(s) {
 }
 
 function setLineup(l) {
-  lineup = { title: l.title || '', signer: l.signer || '', slots: {} };
+  const r = l.rules || {};
+  lineup = {
+    title: l.title || '', signer: l.signer || '',
+    rules: { allGens: !!r.allGens, firstEvo: !!r.firstEvo, noLegends: !!r.noLegends,
+             types: (r.types || []).filter(t => TYPES[t]).map(Number) },
+    slots: {},
+  };
   for (const [k, v] of Object.entries(l.slots || {})) {
-    if (SLOT_BY_ID[k] && v >= 1 && v <= 151) lineup.slots[k] = +v;
+    if (SLOT_BY_ID[k] && v >= 1 && v <= POKEMON.length) lineup.slots[k] = +v;
   }
   $('title').value = lineup.title;
   $('signer').value = lineup.signer;
   renderSignature();
+  renderRules();
   setSelected(null);
   persist();
 }
 
 function encodeShare() {
   const s = Object.entries(lineup.slots).map(([k, v]) => `${k}.${v}`).join('-');
-  return `#t=${encodeURIComponent(lineup.title)}&by=${encodeURIComponent(lineup.signer)}&s=${s}`;
+  const r = lineup.rules;
+  const flags = ['allGens', 'firstEvo', 'noLegends'].filter(k => r[k]).join('.');
+  return `#t=${encodeURIComponent(lineup.title)}&by=${encodeURIComponent(lineup.signer)}` +
+    `&r=${flags}&ty=${r.types.join('.')}&s=${s}`;
 }
 
 function decodeShare(hash) {
@@ -426,7 +512,10 @@ function decodeShare(hash) {
     const [k, v] = pair.split('.');
     if (k) slots[k] = +v;
   }
-  return { title: p.get('t') || '', signer: p.get('by') || '', slots };
+  const flags = (p.get('r') || '').split('.');
+  const rules = { allGens: flags.includes('allGens'), firstEvo: flags.includes('firstEvo'), noLegends: flags.includes('noLegends'),
+                  types: (p.get('ty') || '').split('.').filter(Boolean).map(Number) };
+  return { title: p.get('t') || '', signer: p.get('by') || '', rules, slots };
 }
 
 function toast(msg) {
@@ -441,10 +530,10 @@ function wireControls() {
   $('title').addEventListener('input', e => { lineup.title = e.target.value; persist(); });
   $('signer').addEventListener('input', e => { lineup.signer = e.target.value; persist(); renderSignature(); });
 
-  $('search').addEventListener('input', e => {
-    const q = e.target.value.trim().toLowerCase().replace(/^#0*/, '');
-    for (const li of $('list').children) li.hidden = !!q && !li.dataset.search.includes(q);
-  });
+  $('search').addEventListener('input', filterList);
+  $('genSel').value = store.get('pf.gen', 'all');
+  $('genSel').addEventListener('change', e => { store.set('pf.gen', e.target.value); filterList(); });
+  filterList();
 
   $('saveBtn').addEventListener('click', () => {
     const name = prompt('Save lineup as:', lineup.title || $('loadSel').value || 'My lineup');
@@ -474,7 +563,7 @@ function wireControls() {
 
   $('clearBtn').addEventListener('click', () => {
     if (Object.keys(lineup.slots).length && !confirm('Empty every position?')) return;
-    setLineup({ title: lineup.title, signer: lineup.signer, slots: {} });
+    setLineup({ ...lineup, slots: {} });
   });
 
   $('shareBtn').addEventListener('click', async () => {
@@ -492,6 +581,54 @@ function wireControls() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') setSelected(null); });
 }
 
+// Typing a search looks through every generation; otherwise the list shows the chosen one.
+function filterList() {
+  const q = $('search').value.trim().toLowerCase().replace(/^#0*/, '');
+  const gen = lineup.rules.allGens ? $('genSel').value : 'all';
+  for (const li of $('list').children) {
+    li.hidden = !allowed(+li.dataset.mon) ||
+      (q ? !li.dataset.search.includes(q) : gen !== 'all' && li.dataset.gen !== gen);
+  }
+}
+
+function renderRules() {
+  const r = lineup.rules;
+  for (const b of document.querySelectorAll('.tog')) b.setAttribute('aria-pressed', !!r[b.dataset.rule]);
+  for (const b of document.querySelectorAll('.type-chip')) b.setAttribute('aria-pressed', r.types.includes(+b.dataset.type));
+  $('typeSummary').textContent = r.types.length ? r.types.map(t => TYPES[t]).join(', ') : 'any';
+  $('genSel').hidden = !r.allGens;
+  filterList();
+  drawPageField();
+}
+
+function wireRules() {
+  const chips = $('typeChips');
+  TYPES.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.className = 'type-chip';
+    b.dataset.type = i;
+    b.style.setProperty('--type', TYPE_COLOR[t]);
+    b.textContent = t;
+    chips.appendChild(b);
+  });
+  chips.addEventListener('click', e => {
+    const t = e.target.dataset.type;
+    if (t === undefined) return;
+    const types = lineup.rules.types;
+    const at = types.indexOf(+t);
+    if (at >= 0) types.splice(at, 1); else types.push(+t);
+    persist();
+    renderRules();
+  });
+  $('toggles').addEventListener('click', e => {
+    const rule = e.target.dataset.rule;
+    if (!rule) return;
+    lineup.rules[rule] = !lineup.rules[rule];
+    persist();
+    renderRules();
+  });
+}
+
 function setHd(on) {
   hd = on;
   store.set('pf.hd', on);
@@ -506,6 +643,7 @@ function setHd(on) {
 renderList();
 buildField();
 wireRosterDrop();
+wireRules();
 wireControls();
 refreshLoadList();
 setHd(store.get('pf.hd', false));

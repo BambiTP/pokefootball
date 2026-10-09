@@ -66,7 +66,7 @@ button.primary:hover { filter: brightness(1.08); }
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: 290px 1fr;
 }
 
 .roster {
@@ -82,6 +82,35 @@ button.primary:hover { filter: brightness(1.08); }
 .roster.drop-target { outline: 2px dashed var(--accent); outline-offset: -4px; }
 
 .hint { margin: 0; font-size: 12px; color: var(--muted); }
+
+.filters { display: flex; gap: 6px; }
+.filters input { flex: 1; min-width: 0; }
+
+.rule {
+  margin: 0;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 203, 5, .12);
+  border-left: 3px solid var(--accent);
+}
+
+.toggles { display: flex; flex-wrap: wrap; gap: 4px; }
+.tog, .type-chip { padding: 4px 8px; font-size: 13px; border-radius: 14px; }
+.tog[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+
+.types-box summary, .notes summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.types-box[open] summary { margin-bottom: 4px; }
+.type-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.type-chip { padding: 2px 7px; font-size: 12px; opacity: .45; color: #fff; border: none; background: var(--type); }
+.type-chip[aria-pressed="true"] { opacity: 1; outline: 2px solid #fff; }
+
+.types { display: flex; gap: 3px; margin-top: 1px; }
+.type { font-size: 10px; font-weight: 700; color: #fff; padding: 0 5px; border-radius: 6px; background: var(--type); text-transform: uppercase; }
+
+.mon .info { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.mon .hw { font-size: 12px; color: var(--muted); }
+.mon.selected .hw { color: inherit; }
 
 .list {
   list-style: none;
@@ -102,6 +131,7 @@ button.primary:hover { filter: brightness(1.08); }
   user-select: none;
 }
 
+.mon[hidden] { display: none; }
 .mon:hover { background: var(--panel-2); }
 .mon.selected { background: var(--accent); color: var(--accent-text); }
 .mon.used { opacity: .4; }
@@ -175,6 +205,7 @@ button.primary:hover { filter: brightness(1.08); }
 }
 
 .slot.filled .disc { border-style: solid; background: rgba(255, 255, 255, .22); }
+.slot.dupe .disc { border: .4cqw solid #ff3b3b; background: rgba(230, 40, 40, .55); }
 .slot.over .disc, .slot.selected .disc { border-color: var(--accent); box-shadow: 0 0 0 .4cqw rgba(255, 203, 5, .45); }
 .field.placing .slot .disc { border-color: rgba(255, 203, 5, .85); }
 
@@ -187,7 +218,7 @@ button.primary:hover { filter: brightness(1.08); }
   pointer-events: none;
 }
 
-.hd .slot .disc img { width: 9.5cqw; height: 9.5cqw; image-rendering: auto; }
+.hd .slot .disc img { width: 9cqw; height: 9cqw; image-rendering: auto; }
 
 .slot .name {
   font-size: 1.8cqw;

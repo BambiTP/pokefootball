@@ -29,8 +29,30 @@
 
 <main class="layout">
   <aside class="roster" id="roster">
-    <input id="search" type="search" placeholder="Search name or #" aria-label="Search Pokémon">
-    <p class="hint">Drag onto a position — or tap a Pokémon, then tap a position. Drag a placed one back here to remove it.</p>
+    <div class="toggles" id="toggles">
+      <button class="tog" data-rule="allGens" aria-pressed="false">All gens</button>
+      <button class="tog" data-rule="firstEvo" aria-pressed="false">1st evolution only</button>
+      <button class="tog" data-rule="noLegends" aria-pressed="false">No legendaries</button>
+    </div>
+    <details class="types-box">
+      <summary>Types: <span id="typeSummary">any</span></summary>
+      <div id="typeChips" class="type-chips"></div>
+    </details>
+    <div class="filters">
+      <select id="genSel" aria-label="Generation" hidden>
+        <option value="all">Every gen</option>
+        <option value="1">Gen 1</option><option value="2">Gen 2</option><option value="3">Gen 3</option>
+        <option value="4">Gen 4</option><option value="5">Gen 5</option><option value="6">Gen 6</option>
+        <option value="7">Gen 7</option><option value="8">Gen 8</option><option value="9">Gen 9</option>
+      </select>
+      <input id="search" type="search" placeholder="Search name or #" aria-label="Search Pokémon">
+    </div>
+    <details class="notes">
+      <summary>How to use &amp; notes</summary>
+      <p class="hint">Drag onto a position — or tap a Pokémon, then tap a position. Drag a placed one back here to remove it. Turning on All gens (or using any Pokémon past Gen 1) turns the field blue; a Pokémon used twice gets a red circle. Toggles that are on show up on the saved image.</p>
+    </details>
+    <p class="rule"><strong>Note:</strong> Flying types can't fly higher than 5 feet.</p>
+    <p class="rule"><strong>Note:</strong> Most Pokémon can jump really high.</p>
     <ul id="list" class="list"></ul>
   </aside>
 
@@ -42,6 +64,7 @@
 <div id="toast" class="toast" role="status"></div>
 
 <script src="pokemon.js"></script>
+<script src="data.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

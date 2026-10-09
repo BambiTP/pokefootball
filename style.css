@@ -230,6 +230,19 @@ button.primary:hover { filter: brightness(1.08); }
   text-shadow: 0 0 .3cqw #000, 0 0 .3cqw #000;
 }
 
+/* sits under the name without changing the slot's size, so the page matches the exported image */
+.slot .hw {
+  position: absolute;
+  top: 100%;
+  font-size: 1.35cqw;
+  font-weight: 600;
+  line-height: 1.6cqw;
+  white-space: nowrap;
+  color: #e8f0ff;
+  text-shadow: 0 0 .3cqw #000, 0 0 .3cqw #000, 0 0 .3cqw #000;
+  pointer-events: none;
+}
+
 .slot .x {
   position: absolute;
   top: -.4cqw;

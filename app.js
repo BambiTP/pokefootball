@@ -24,12 +24,12 @@ const SLOTS = [
   { id: 'RT',  label: 'RT',  side: 'O', x: 70, y: 55 },
   { id: 'TE',  label: 'TE',  side: 'O', x: 81, y: 57 },
   { id: 'WR3', label: 'WR',  side: 'O', x: 93, y: 55 },
-  { id: 'WR2', label: 'WR',  side: 'O', x: 18, y: 70.5 },
-  { id: 'QB',  label: 'QB',  side: 'O', x: 50, y: 70.5 },
-  { id: 'RB',  label: 'RB',  side: 'O', x: 50, y: 85.5 },
+  { id: 'WR2', label: 'WR',  side: 'O', x: 18, y: 71 },
+  { id: 'QB',  label: 'QB',  side: 'O', x: 50, y: 71 },
+  { id: 'RB',  label: 'RB',  side: 'O', x: 50, y: 87 },
 
-  { id: 'K',   label: 'K',   side: 'S', x: 80, y: 85 },
-  { id: 'P',   label: 'P',   side: 'S', x: 92, y: 85 },
+  { id: 'K',   label: 'K',   side: 'S', x: 80, y: 86 },
+  { id: 'P',   label: 'P',   side: 'S', x: 92, y: 86 },
 ];
 const SLOT_BY_ID = Object.fromEntries(SLOTS.map(s => [s.id, s]));
 const SIDE_COLOR = { D: '#d64545', O: '#3b74d6', S: '#c99a12' };
@@ -46,6 +46,8 @@ function heightText(dm) {
   return `${Math.floor(inches / 12)}'${String(inches % 12).padStart(2, '0')}"`;
 }
 const weightText = hg => `${(hg * 0.220462).toFixed(1)} lb`;
+// short form for under a name on the field, so neighbors on the line don't run together
+const sizeLine = mon => `${heightText(SIZES[mon - 1][0])} ${Math.round(SIZES[mon - 1][1] * 0.220462)} lb`;
 
 // ---------- state ----------
 const NO_RULES = { allGens: false, firstEvo: false, noLegends: false, noPseudo: false, popWarner: false, types: [] };
@@ -248,7 +250,7 @@ function buildField() {
     el.dataset.slot = s.id;
     el.style.left = s.x + '%';
     el.style.top = s.y + '%';
-    el.innerHTML = `<span class="pos">${s.label}</span><div class="disc"><button class="x" title="Remove">×</button></div><span class="name"></span>`;
+    el.innerHTML = `<span class="pos">${s.label}</span><div class="disc"><button class="x" title="Remove">×</button></div><span class="name"></span><span class="hw"></span>`;
 
     el.addEventListener('dragstart', e => {
       e.dataTransfer.setData('text/plain', JSON.stringify({ from: 'slot', slot: s.id }));
@@ -292,6 +294,7 @@ function renderSlots() {
     el.classList.toggle('selected', !!selected && selected.from === 'slot' && selected.slot === id);
     el.draggable = !!mon;
     el.querySelector('.name').textContent = mon ? POKEMON[mon - 1] : '';
+    el.querySelector('.hw').textContent = mon ? sizeLine(mon) : '';
     if (mon) {
       const img = document.createElement('img');
       img.src = sprite(mon);
@@ -442,8 +445,7 @@ async function renderImage() {
       ctx.fillStyle = '#fff';
       ctx.fillText(name, cx, ny);
 
-      const [ht, wt] = SIZES[mon - 1];
-      const hw = `${heightText(ht)} · ${weightText(wt)}`;
+      const hw = sizeLine(mon);
       const hy = ny + 1.6 * u;
       fitText(ctx, hw, 9.6 * u, 1.45 * u, 600);
       ctx.lineWidth = 4;
